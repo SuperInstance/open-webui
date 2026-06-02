@@ -515,6 +515,7 @@ from open_webui.routers.retrieval import (
     get_reranking_function,
     get_rf,
 )
+from open_webui.retrieval.budget import budget_router, init_guardian
 from open_webui.socket.main import (
     MODELS,
     get_event_emitter,
@@ -676,6 +677,12 @@ async def lifespan(app: FastAPI):
     from open_webui.utils.automations import scheduler_worker_loop
 
     asyncio.create_task(scheduler_worker_loop(app))
+
+    # Initialize Budget Guardian
+    if 'BUDGET_GUARDIAN_ENABLED' in os.environ and os.environ['BUDGET_GUARDIAN_ENABLED'].lower() in ('true', '1', 'yes'):
+        guardian = init_guardian(app.state)
+        await guardian.load_config()
+        log.info('Budget Guardian initialized')
 
     if app.state.config.ENABLE_BASE_MODELS_CACHE:
         try:
@@ -1450,6 +1457,9 @@ app.include_router(utils.router, prefix='/api/v1/utils', tags=['utils'])
 app.include_router(terminals.router, prefix='/api/v1/terminals', tags=['terminals'])
 app.include_router(automations.router, prefix='/api/v1/automations', tags=['automations'])
 app.include_router(calendar.router, prefix='/api/v1/calendars', tags=['calendars'])
+
+# Budget Guardian API
+app.include_router(budget_router)
 
 # SCIM 2.0 API for identity management
 if ENABLE_SCIM:

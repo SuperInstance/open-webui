@@ -234,4 +234,25 @@ If you have any questions, suggestions, or need assistance, please open an issue
 
 ---
 
+## 🏆 SuperInstance Enhancement: Budget Guardian
+
+**Open WebUI with API spending limits.** Same chat interface. Won't surprise you with a $500 bill.
+
+Budget Guardian adds per-user and per-team API spending limits to Open WebUI. Track token usage, enforce daily/weekly/monthly budgets, auto-downgrade expensive models, and get alerted before costs spiral.
+
+### Key Features
+
+- **Per-user token budgets** — daily, weekly, monthly limits configurable by admin
+- **Per-model cost tracking** — real LLM pricing baked in (GPT-4o, Claude Opus, Gemini, DeepSeek, and 40+ models)
+- **Phase detection**: 60% → warning banner, 85% → auto-downgrade to cheaper model, 100% → soft block with admin override
+- **Admin dashboard** — total spend, per-user spend, model cost breakdown, utilization heatmap
+- **Team budgets with rollover** — unused tokens carry over to next period
+- **Alert system** — email/webhook when a team hits 90%
+
+Enable with `BUDGET_GUARDIAN_ENABLED=true` and the `/api/budget/*` endpoints will track every LLM call.
+
+See [`INTEGRATION.md`](./INTEGRATION.md) for full documentation.
+
+---
+
 Created by [Timothy Jaeryang Baek](https://github.com/tjbck) - Let's make Open WebUI even more amazing together! 💪
