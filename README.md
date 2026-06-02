@@ -236,22 +236,80 @@ If you have any questions, suggestions, or need assistance, please open an issue
 
 ## 🏆 SuperInstance Enhancement: Budget Guardian
 
-**Open WebUI with API spending limits.** Same chat interface. Won't surprise you with a $500 bill.
+Your team spent $3,200 on API calls last month. Nobody knows on what.
 
-Budget Guardian adds per-user and per-team API spending limits to Open WebUI. Track token usage, enforce daily/weekly/monthly budgets, auto-downgrade expensive models, and get alerted before costs spiral.
+Budget Guardian is a drop-in module for Open WebUI that tracks every LLM API
+call by user, model, token count, and dollar cost. It enforces per-user and
+per-team spending limits with graduated enforcement — warn at 60%, auto-downgrade
+at 85%, block at 100% — and exposes everything through `/api/budget/*`.
 
-### Key Features
+### Setup
 
-- **Per-user token budgets** — daily, weekly, monthly limits configurable by admin
-- **Per-model cost tracking** — real LLM pricing baked in (GPT-4o, Claude Opus, Gemini, DeepSeek, and 40+ models)
-- **Phase detection**: 60% → warning banner, 85% → auto-downgrade to cheaper model, 100% → soft block with admin override
-- **Admin dashboard** — total spend, per-user spend, model cost breakdown, utilization heatmap
-- **Team budgets with rollover** — unused tokens carry over to next period
-- **Alert system** — email/webhook when a team hits 90%
+```env
+# .env (mounted into the app container)
+BUDGET_GUARDIAN_ENABLED=true
+BUDGET_GUARDIAN_DATA_DIR=/app/backend/data/budget
+```
 
-Enable with `BUDGET_GUARDIAN_ENABLED=true` and the `/api/budget/*` endpoints will track every LLM call.
+That's it. Every subsequent LLM request gets logged with model, token counts,
+and a real cost estimate drawn from the built-in pricing table (41 models,
+actual OpenAI/Anthropic/Gemini/Mistral/DeepSeek rates).
 
-See [`INTEGRATION.md`](./INTEGRATION.md) for full documentation.
+### What happens at each threshold
+
+Defaults (configurable via `/api/budget/admin/config`):
+
+| Phase     | Usage  | Effect                                                    |
+|-----------|--------|-----------------------------------------------------------|
+| GREEN     | < 60%  | Normal operation                                          |
+| WARNING   | 60%    | Banner shown to user, alert sent                          |
+| DOWNGRADE | 85%    | Auto-routed to a cheaper model (e.g. GPT-4o → GPT-4o Mini) |
+| BLOCKED   | 100%+  | API calls return 429 — admin override available            |
+
+**Example.** Set a user's daily budget to $5:
+
+```bash
+curl -X POST http://localhost:3000/api/budget/admin/user \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "alice@example.com",
+    "daily_cost_limit_cents": 500,
+    "downgrade_model": "gpt-4o-mini"
+  }'
+```
+
+### The ah-ha moment
+
+Your intern ran up $400 in Claude Opus calls over two days. Budget Guardian
+noticed at 60% (warning banner), then auto-downgraded to Haiku at 85%.
+Without intervention, the bill would have hit $460. With downgrade, it landed
+at $120 — **saved $340**. The admin dashboard caught it:
+
+```json
+GET /api/budget/admin
+{
+  "total_spend": {
+    "period": "monthly",
+    "total_cost_usd": 1472.18,
+    "total_tokens": 84100000,
+    "total_calls": 6321,
+    "model_breakdown": {
+      "claude-3-opus-20240229": {"calls": 421, "cost_cents": 40000, "tokens": 5200000},
+      "claude-3-5-haiku-20241022": {"calls": 1893, "cost_cents": 8000, "tokens": 11200000}
+    }
+  },
+  "users_usage": [
+    {"user_id": "alice@example.com", "total_cost_cents": 40000, "total_tokens": 5200000, "call_count": 421}
+  ],
+  "heatmap": {
+    "alice@example.com": {"usage_pct": 85.0, "phase": "downgrade"}
+  }
+}
+```
+
+Phase detection, pricing, storage, and alerting live in
+[`backend/open_webui/retrieval/budget/`](./backend/open_webui/retrieval/budget/).
 
 ---
 

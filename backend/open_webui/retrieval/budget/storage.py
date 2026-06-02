@@ -258,11 +258,13 @@ class BudgetStorage:
                     pass
         return int(total * 100)
 
-    def _parse_ts(self, ts_str: str) -> datetime:
-        """Parse an ISO timestamp string safely."""
+    def _parse_ts(self, ts_val) -> datetime:
+        """Parse a timestamp value (datetime or ISO string) safely."""
+        if isinstance(ts_val, datetime):
+            return ts_val
         try:
-            return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+            return datetime.fromisoformat(str(ts_val).replace("Z", "+00:00"))
+        except (ValueError, AttributeError, TypeError):
             return datetime.min.replace(tzinfo=timezone.utc)
 
     async def get_accumulated_usage(

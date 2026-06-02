@@ -6,6 +6,8 @@ with phase detection (warning → downgrade → block), admin dashboards,
 and alerting.
 """
 
+import importlib
+
 from .core import BudgetGuardian
 from .models import (
     BudgetAlert,
@@ -17,7 +19,14 @@ from .models import (
     UsageRecord,
 )
 from .pricing import MODEL_PRICING_MAP, resolve_model_pricing
-from .router import router as budget_router
+
+
+def __getattr__(name):
+    if name == "budget_router":
+        from .router import router
+        return router
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "BudgetGuardian",
